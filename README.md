@@ -173,6 +173,12 @@ git push origin master
 
 ---
 
+## 🤖 用 AI Bot 團隊開發
+
+這個專案的後續開發由多個 Grok Bot 分工協作：PM Bot 整理需求、工程師 Bot 寫程式並部署、維運 Bot 監控線上服務、真人任務 Bot 整理需要人工操作的事項。下圖是工程師 Bot 回報 Services 分層重構結果的對話畫面。
+
+![Grok Bot 團隊協作畫面](docs/images/grok-bot-workflow.png)
+
 ## 🐛 踩過的坑與解法
 
 | 問題 | 原因 | 解法 |
