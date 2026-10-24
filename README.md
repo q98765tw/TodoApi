@@ -1,4 +1,6 @@
-# 📝 TodoApi
+# 📝 TodoApi-GrokBot
+
+GitHub: https://github.com/q98765tw/TodoApi-GrokBot
 
 一個用 **ASP.NET Core 8 Web API** 打造的 Todo 待辦清單應用，資料庫使用 **Neon（Serverless PostgreSQL）**，透過 **Docker** 部署在 **Render 免費層**，並附上一個簡單的前端頁面。
 
@@ -45,12 +47,12 @@ flowchart LR
 ## 📁 專案結構
 
 ```
-TodoApi/
+TodoApi-GrokBot/
 ├── Dockerfile                  # Render 部署用（放在 solution 根目錄）
 ├── .dockerignore
 ├── global.json                 # 本機固定使用 .NET 9 SDK 建置（Docker 會忽略）
-├── TodoApi.sln
-└── TodoApi/
+├── TodoApi-GrokBot.sln
+└── TodoApi-GrokBot/
     ├── Controllers/
     │   └── TodosController.cs  # Todo CRUD API
     ├── Data/
@@ -62,7 +64,7 @@ TodoApi/
     │   └── index.html          # 前端頁面
     ├── Program.cs              # 服務註冊、PORT 設定、自動 Migration
     ├── appsettings.json        # 不含任何密碼
-    └── TodoApi.csproj
+    └── TodoApi-GrokBot.csproj
 ```
 
 ## 🔌 API 端點
@@ -101,12 +103,12 @@ dotnet tool install --global dotnet-ef --version 8.0.11
    ```
 3. **密碼不寫進 `appsettings.json`**（會被推上 GitHub），本機改用 User Secrets：
    ```bash
-   cd TodoApi
+   cd TodoApi-GrokBot
    dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=...;Password=...;SSL Mode=Require"
    ```
 4. 建立 Migration：
    ```bash
-   dotnet ef migrations add InitialCreate --project TodoApi
+   dotnet ef migrations add InitialCreate --project TodoApi-GrokBot
    ```
    程式啟動時會自動執行 `Database.Migrate()` 建立資料表。
 
@@ -115,7 +117,7 @@ dotnet tool install --global dotnet-ef --version 8.0.11
 在 Visual Studio 選擇 **https** 啟動設定檔（不是 Container），按 ▶ 執行，或：
 
 ```bash
-dotnet run --project TodoApi
+dotnet run --project TodoApi-GrokBot
 ```
 
 - 前端畫面：`https://localhost:<port>/`
@@ -128,17 +130,17 @@ dotnet run --project TodoApi
 ```dockerfile
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY TodoApi/TodoApi.csproj TodoApi/
-RUN dotnet restore TodoApi/TodoApi.csproj
+COPY TodoApi-GrokBot/TodoApi-GrokBot.csproj TodoApi-GrokBot/
+RUN dotnet restore TodoApi-GrokBot/TodoApi-GrokBot.csproj
 COPY . .
-RUN dotnet publish TodoApi/TodoApi.csproj -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish TodoApi-GrokBot/TodoApi-GrokBot.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app/publish .
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 10000
-ENTRYPOINT ["dotnet", "TodoApi.dll"]
+ENTRYPOINT ["dotnet", "TodoApi-GrokBot.dll"]
 ```
 
 `Program.cs` 會讀取 Render 提供的 `PORT` 環境變數：
@@ -209,7 +211,7 @@ git push origin master
 🤖 Built with the help of **Grok Bot**.
 ## Authentication (JWT)
 
-- **Required env var:** `Jwt__Key` (config `Jwt:Key`), at least 32 bytes. Generate one with `openssl rand -base64 48`. The app refuses to start if it is missing/too short. Locally: `dotnet user-secrets set Jwt:Key "<value>"` in `TodoApi/`.
+- **Required env var:** `Jwt__Key` (config `Jwt:Key`), at least 32 bytes. Generate one with `openssl rand -base64 48`. The app refuses to start if it is missing/too short. Locally: `dotnet user-secrets set Jwt:Key "<value>"` in `TodoApi-GrokBot/`.
 - `POST /api/auth/register` `{ "email": "...", "password": "..." }` → 201 `{ id, email, createdAt }`; 400 for invalid email, password < 8 chars, or duplicate email.
 - `POST /api/auth/login` same body → 200 `{ token, expiresAt }` (HS256, valid 7 days); 401 on wrong credentials.
 - All `/api/todos` endpoints require `Authorization: Bearer <token>` and only see the caller's own todos (other users' todos return 404). In Swagger, click **Authorize** and paste the token.
