@@ -4,6 +4,14 @@
 
 > 🤖 本專案是在 **Grok Bot** 的一步步引導與協助下，從零開始完成的：從建立專案、撰寫 EF Core 程式碼、設計前端，到推上 GitHub 並在 Render 部署上線。
 
+## 🌐 線上 Demo
+
+- 前端畫面：<https://todoapi-jbts.onrender.com/>
+- Swagger API 測試頁：<https://todoapi-jbts.onrender.com/swagger>
+- API 範例：<https://todoapi-jbts.onrender.com/api/todos>
+
+> ⏱️ Render 免費層閒置後會休眠，第一次開啟可能需要等 30～50 秒。
+
 ---
 
 ## ✨ 功能
