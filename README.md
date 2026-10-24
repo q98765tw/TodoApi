@@ -201,3 +201,10 @@ git push origin master
 ---
 
 🤖 Built with the help of **Grok Bot**.
+## Authentication (JWT)
+
+- **Required env var:** `Jwt__Key` (config `Jwt:Key`), at least 32 bytes. Generate one with `openssl rand -base64 48`. The app refuses to start if it is missing/too short. Locally: `dotnet user-secrets set Jwt:Key "<value>"` in `TodoApi/`.
+- `POST /api/auth/register` `{ "email": "...", "password": "..." }` → 201 `{ id, email, createdAt }`; 400 for invalid email, password < 8 chars, or duplicate email.
+- `POST /api/auth/login` same body → 200 `{ token, expiresAt }` (HS256, valid 7 days); 401 on wrong credentials.
+- All `/api/todos` endpoints require `Authorization: Bearer <token>` and only see the caller's own todos (other users' todos return 404). In Swagger, click **Authorize** and paste the token.
+- Note: the `AddUsersAndTodoOwnership` migration deletes all existing todos (they have no owner).
