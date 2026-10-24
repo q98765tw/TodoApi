@@ -6,21 +6,80 @@
   <title>我的 Todo</title>
   <style>
     body { font-family: system-ui; max-width: 480px; margin: 40px auto; padding: 0 16px; }
-    form { display: flex; gap: 8px; }
-    input[type=text] { flex: 1; padding: 8px; }
+    form { display: flex; gap: 8px; margin-bottom: 8px; }
+    input[type=text], input[type=email], input[type=password] { flex: 1; padding: 8px; min-width: 0; }
     li { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
     .done span { text-decoration: line-through; color: #999; }
     li button { margin-left: auto; }
+    #err { color: #c00; min-height: 1.2em; }
+    #who { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    #who button { margin-left: auto; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <h1>📝 我的 Todo</h1>
-  <form id="f"><input type="text" id="t" placeholder="要做什麼？" required><button>新增</button></form>
-  <ul id="list"></ul>
+  <p id="err"></p>
+
+  <div id="authView">
+    <h3>登入</h3>
+    <form id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email" required>
+      <input type="password" id="loginPassword" placeholder="密碼" required>
+      <button>登入</button>
+    </form>
+    <h3>註冊</h3>
+    <form id="registerForm">
+      <input type="email" id="regEmail" placeholder="Email" required>
+      <input type="password" id="regPassword" placeholder="密碼（至少 8 字元）" required minlength="8">
+      <button>註冊</button>
+    </form>
+  </div>
+
+  <div id="todoView" class="hidden">
+    <div id="who"><span>已登入：<b id="whoEmail"></b></span><button id="logoutBtn">登出</button></div>
+    <form id="f"><input type="text" id="t" placeholder="要做什麼？" required><button>新增</button></form>
+    <ul id="list"></ul>
+  </div>
 <script>
 const api = '/api/todos';
+const showErr = msg => err.textContent = msg || '';
+
+async function errorText(res) {
+  try {
+    const d = await res.json();
+    if (d.error) return d.error;
+    if (d.errors) return Object.values(d.errors).flat().join(' ');
+    if (d.title) return d.title;
+  } catch {}
+  return `錯誤 (${res.status})`;
+}
+
+function render() {
+  const token = localStorage.getItem('token');
+  authView.classList.toggle('hidden', !!token);
+  todoView.classList.toggle('hidden', !token);
+  whoEmail.textContent = localStorage.getItem('email') || '';
+  if (token) load(); else list.innerHTML = '';
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('email');
+  render();
+}
+
+// 所有 /api/todos 呼叫都帶 token；401 就清掉 token 回登入畫面
+async function authFetch(url, opts = {}) {
+  const res = await fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}),
+    Authorization: `Bearer ${localStorage.getItem('token')}` } });
+  if (res.status === 401) { logout(); showErr('登入已失效，請重新登入'); throw new Error('401'); }
+  if (!res.ok) { showErr(await errorText(res)); throw new Error(res.status); }
+  return res;
+}
+
 async function load() {
-  const todos = await (await fetch(api)).json();
+  const todos = await (await authFetch(api)).json();
   list.innerHTML = '';
   todos.forEach(x => {
     const li = document.createElement('li');
@@ -28,21 +87,43 @@ async function load() {
     li.innerHTML = `<input type="checkbox" ${x.isDone ? 'checked' : ''}><span></span><button>刪除</button>`;
     li.querySelector('span').textContent = x.title;
     li.querySelector('input').onchange = async e => {
-      await fetch(`${api}/${x.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...x, isDone: e.target.checked }) });
+      await authFetch(`${api}/${x.id}`, { method: 'PUT', body: JSON.stringify({ title: x.title, isDone: e.target.checked }) });
       load();
     };
-    li.querySelector('button').onclick = async () => { await fetch(`${api}/${x.id}`, { method: 'DELETE' }); load(); };
+    li.querySelector('button').onclick = async () => { await authFetch(`${api}/${x.id}`, { method: 'DELETE' }); load(); };
     list.appendChild(li);
   });
 }
+
 f.onsubmit = async e => {
   e.preventDefault();
-  await fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: t.value }) });
+  showErr();
+  await authFetch(api, { method: 'POST', body: JSON.stringify({ title: t.value, isDone: false }) });
   t.value = ''; load();
 };
-load();
+
+async function login(email, password) {
+  const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }) });
+  if (!res.ok) { showErr(res.status === 401 ? 'Email 或密碼錯誤' : await errorText(res)); return; }
+  const d = await res.json();
+  localStorage.setItem('token', d.token);
+  localStorage.setItem('email', email.trim().toLowerCase());
+  showErr(); render();
+}
+
+loginForm.onsubmit = e => { e.preventDefault(); login(loginEmail.value, loginPassword.value); };
+
+registerForm.onsubmit = async e => {
+  e.preventDefault();
+  const res = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: regEmail.value, password: regPassword.value }) });
+  if (!res.ok) { showErr(await errorText(res)); return; }
+  await login(regEmail.value, regPassword.value);
+};
+
+logoutBtn.onclick = logout;
+render();
 </script>
 </body>
 </html>
