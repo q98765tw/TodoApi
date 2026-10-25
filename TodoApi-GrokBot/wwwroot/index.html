@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>我的 Todo</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" onerror="window.chartJsFailed = true"></script>
   <style>
     body { font-family: system-ui; max-width: 480px; margin: 40px auto; padding: 0 16px; }
     form { display: flex; gap: 8px; margin-bottom: 8px; }
@@ -20,6 +20,7 @@
     .overdue span, .overdue input.due { color: #c00; font-weight: bold; }
     #filters { display: flex; gap: 4px; margin: 8px 0; }
     #filters button.active { font-weight: bold; text-decoration: underline; }
+    .muted { color: #888; font-size: 0.9em; }
     .chart { margin: 16px 0; }
     .hidden { display: none !important; }
   </style>
@@ -29,7 +30,7 @@
   <p id="err"></p>
 
   <div id="authView">
-    <div class="chart"><h3>每月活躍使用者（近 12 個月）</h3><canvas id="mauChart"></canvas></div>
+    <div class="chart"><h3>每月活躍使用者（近 12 個月）</h3><canvas id="mauChart"></canvas><p id="mauMsg" class="muted"></p></div>
     <h3>登入</h3>
     <form id="loginForm">
       <input type="email" id="loginEmail" placeholder="Email" required>
@@ -54,7 +55,7 @@
       <button data-status="overdue">逾期</button>
     </div>
     <ul id="list"></ul>
-    <div class="chart"><h3>近 30 天完成數</h3><canvas id="completionsChart"></canvas></div>
+    <div class="chart"><h3>近 30 天完成數</h3><canvas id="completionsChart"></canvas><p id="completionsMsg" class="muted"></p></div>
   </div>
 <script>
 const api = '/api/todos';
@@ -72,8 +73,22 @@ async function errorText(res) {
 
 // 圖表（Chart.js）：登出畫面顯示 MAU，登入畫面顯示近 30 天完成數
 const charts = {};
-function drawBar(id, labels, data, label) {
-  if (typeof Chart === 'undefined') return;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// 等 Chart.js（CDN）載入；載入失敗或逾時回傳 false
+async function chartReady(timeoutMs = 8000) {
+  for (let t = 0; typeof Chart === 'undefined' && !window.chartJsFailed && t < timeoutMs; t += 200) await sleep(200);
+  return typeof Chart !== 'undefined';
+}
+
+// 畫圖；Chart.js 不可用時改顯示純文字（fallback(labels, data) 產生文字）
+async function drawBar(id, labels, data, label, fallback) {
+  const msg = document.getElementById(id.replace('Chart', 'Msg'));
+  if (!(await chartReady())) {
+    msg.textContent = '圖表元件載入失敗。' + fallback(labels, data);
+    return;
+  }
+  msg.textContent = '';
   charts[id]?.destroy();
   charts[id] = new Chart(document.getElementById(id), {
     type: 'bar',
@@ -81,19 +96,42 @@ function drawBar(id, labels, data, label) {
     options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display: false } } }
   });
 }
-async function loadMau() {
-  try {
-    const res = await fetch('/api/stats/monthly-active-users');
-    if (!res.ok) return;
-    const d = await res.json();
-    drawBar('mauChart', d.map(x => x.month), d.map(x => x.activeUsers), '活躍使用者');
-  } catch {}
+
+// 統計請求：Render 免費層冷啟動時可能先回 5xx / 連線失敗，最多重試 6 次（1,2,4,8,8,8 秒）
+// 401 不重試，視為登出。成功回傳 JSON，全部失敗回傳 null。
+const RETRY_DELAYS = [1000, 2000, 4000, 8000, 8000, 8000];
+async function fetchStats(url, msg, withAuth) {
+  msg.textContent = '載入中…';
+  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+    try {
+      const res = await fetch(url, withAuth ? { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } } : {});
+      if (res.ok) return await res.json();
+      if (res.status === 401 && withAuth) { msg.textContent = ''; logout(); showErr('登入已失效，請重新登入'); return null; }
+    } catch {}
+    if (attempt === RETRY_DELAYS.length) break;
+    msg.textContent = `伺服器暖機中，重試 ${attempt + 1}/${RETRY_DELAYS.length}…`;
+    await sleep(RETRY_DELAYS[attempt]);
+  }
+  msg.textContent = '無法載入統計資料，請稍後重新整理。';
+  return null;
 }
+
+async function loadMau() {
+  const d = await fetchStats('/api/stats/monthly-active-users', mauMsg, false);
+  if (!d) return;
+  await drawBar('mauChart', d.map(x => x.month), d.map(x => x.activeUsers), '活躍使用者',
+    (l, v) => l.map((m, i) => `${m}: ${v[i]}`).join('、'));
+}
+
 async function loadCompletions() {
-  try {
-    const d = await (await authFetch('/api/stats/completions')).json();
-    drawBar('completionsChart', d.map(x => x.date.slice(5)), d.map(x => x.count), '完成數');
-  } catch {}
+  if (!localStorage.getItem('token')) return;
+  const d = await fetchStats('/api/stats/completions', completionsMsg, true);
+  if (!d) return;
+  await drawBar('completionsChart', d.map(x => x.date.slice(5)), d.map(x => x.count), '完成數', (l, v) => {
+    const days = l.map((x, i) => [x, v[i]]).filter(([, c]) => c > 0);
+    const total = v.reduce((a, b) => a + b, 0);
+    return `近 30 天共完成 ${total} 件` + (days.length ? '：' + days.map(([x, c]) => `${x}: ${c}`).join('、') : '');
+  });
 }
 
 function render() {
@@ -101,7 +139,7 @@ function render() {
   authView.classList.toggle('hidden', !!token);
   todoView.classList.toggle('hidden', !token);
   whoEmail.textContent = localStorage.getItem('email') || '';
-  if (token) { load(); loadCompletions(); } else { list.innerHTML = ''; loadMau(); }
+  if (token) { load().catch(() => {}); loadCompletions(); } else { list.innerHTML = ''; loadMau(); }
 }
 
 function logout() {
