@@ -7,6 +7,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<TodoItem> Todos => Set<TodoItem>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<LoginEvent> LoginEvents => Set<LoginEvent>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -20,5 +21,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasOne(t => t.User).WithMany(u => u.Todos)
             .HasForeignKey(t => t.UserId).IsRequired()
             .OnDelete(DeleteBehavior.Cascade);
+        b.Entity<LoginEvent>(e =>
+        {
+            e.HasIndex(l => l.OccurredAt);
+            e.HasOne(l => l.User).WithMany(u => u.LoginEvents)
+                .HasForeignKey(l => l.UserId).IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>我的 Todo</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
   <style>
     body { font-family: system-ui; max-width: 480px; margin: 40px auto; padding: 0 16px; }
     form { display: flex; gap: 8px; margin-bottom: 8px; }
@@ -14,6 +15,7 @@
     #err { color: #c00; min-height: 1.2em; }
     #who { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     #who button { margin-left: auto; }
+    .chart { margin: 16px 0; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -22,6 +24,7 @@
   <p id="err"></p>
 
   <div id="authView">
+    <div class="chart"><h3>每月活躍使用者（近 12 個月）</h3><canvas id="mauChart"></canvas></div>
     <h3>登入</h3>
     <form id="loginForm">
       <input type="email" id="loginEmail" placeholder="Email" required>
@@ -40,6 +43,7 @@
     <div id="who"><span>已登入：<b id="whoEmail"></b></span><button id="logoutBtn">登出</button></div>
     <form id="f"><input type="text" id="t" placeholder="要做什麼？" required><button>新增</button></form>
     <ul id="list"></ul>
+    <div class="chart"><h3>近 30 天完成數</h3><canvas id="completionsChart"></canvas></div>
   </div>
 <script>
 const api = '/api/todos';
@@ -55,12 +59,38 @@ async function errorText(res) {
   return `錯誤 (${res.status})`;
 }
 
+// 圖表（Chart.js）：登出畫面顯示 MAU，登入畫面顯示近 30 天完成數
+const charts = {};
+function drawBar(id, labels, data, label) {
+  if (typeof Chart === 'undefined') return;
+  charts[id]?.destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: { labels, datasets: [{ label, data }] },
+    options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display: false } } }
+  });
+}
+async function loadMau() {
+  try {
+    const res = await fetch('/api/stats/monthly-active-users');
+    if (!res.ok) return;
+    const d = await res.json();
+    drawBar('mauChart', d.map(x => x.month), d.map(x => x.activeUsers), '活躍使用者');
+  } catch {}
+}
+async function loadCompletions() {
+  try {
+    const d = await (await authFetch('/api/stats/completions')).json();
+    drawBar('completionsChart', d.map(x => x.date.slice(5)), d.map(x => x.count), '完成數');
+  } catch {}
+}
+
 function render() {
   const token = localStorage.getItem('token');
   authView.classList.toggle('hidden', !!token);
   todoView.classList.toggle('hidden', !token);
   whoEmail.textContent = localStorage.getItem('email') || '';
-  if (token) load(); else list.innerHTML = '';
+  if (token) { load(); loadCompletions(); } else { list.innerHTML = ''; loadMau(); }
 }
 
 function logout() {
@@ -88,9 +118,9 @@ async function load() {
     li.querySelector('span').textContent = x.title;
     li.querySelector('input').onchange = async e => {
       await authFetch(`${api}/${x.id}`, { method: 'PUT', body: JSON.stringify({ title: x.title, isDone: e.target.checked }) });
-      load();
+      load(); loadCompletions();
     };
-    li.querySelector('button').onclick = async () => { await authFetch(`${api}/${x.id}`, { method: 'DELETE' }); load(); };
+    li.querySelector('button').onclick = async () => { await authFetch(`${api}/${x.id}`, { method: 'DELETE' }); load(); loadCompletions(); };
     list.appendChild(li);
   });
 }

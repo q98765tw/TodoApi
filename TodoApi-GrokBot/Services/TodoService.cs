@@ -17,7 +17,8 @@ public class TodoService(AppDbContext db) : ITodoService
 
     public async Task<TodoItem> CreateAsync(int userId, TodoInput input)
     {
-        var item = new TodoItem { Title = input.Title, IsDone = input.IsDone, CreatedAt = DateTime.UtcNow, UserId = userId };
+        var item = new TodoItem { Title = input.Title, IsDone = input.IsDone, CreatedAt = DateTime.UtcNow, UserId = userId,
+            CompletedAt = input.IsDone ? DateTime.UtcNow : null };
         db.Todos.Add(item);
         await db.SaveChangesAsync();
         return item;
@@ -28,6 +29,8 @@ public class TodoService(AppDbContext db) : ITodoService
         var t = await GetAsync(userId, id);
         if (t is null) return false;
         t.Title = input.Title;
+        if (!t.IsDone && input.IsDone) t.CompletedAt = DateTime.UtcNow;
+        else if (t.IsDone && !input.IsDone) t.CompletedAt = null;
         t.IsDone = input.IsDone;
         await db.SaveChangesAsync();
         return true;

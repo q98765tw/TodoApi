@@ -7,4 +7,5 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public List<TodoItem> Todos { get; set; } = [];
+    public List<LoginEvent> LoginEvents { get; set; } = [];
 }

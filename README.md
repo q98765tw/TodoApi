@@ -76,6 +76,10 @@ TodoApi-GrokBot/
 | POST | `/api/todos` | 新增 Todo，Body：`{ "title": "買牛奶" }` |
 | PUT | `/api/todos/{id}` | 修改 Todo，Body：`{ "title": "買牛奶", "isDone": true }` |
 | DELETE | `/api/todos/{id}` | 刪除 Todo |
+| GET | `/api/stats/completions` | 🔒 近 30 天（含今天）每日完成數 `[{ date: "yyyy-MM-dd", count }]`，補零 |
+| GET | `/api/stats/monthly-active-users` | 公開：近 12 個月每月不重複登入人數 `[{ month: "yyyy-MM", activeUsers }]`，補零 |
+
+> 統計以台北時間（固定 UTC+8）切日／切月。完成時間 `completedAt` 在 Todo 由未完成變完成時記錄、改回未完成時清除；每次成功登入記一筆 `LoginEvents`。
 
 ---
 

@@ -39,6 +39,9 @@ public class AuthService(AppDbContext db, IPasswordHasher<User> hasher, ITokenSe
         if (user is null || string.IsNullOrEmpty(req.Password) ||
             hasher.VerifyHashedPassword(user, user.PasswordHash, req.Password) == PasswordVerificationResult.Failed)
             return null;
+
+        db.LoginEvents.Add(new LoginEvent { UserId = user.Id, OccurredAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
         return tokens.CreateToken(user);
     }
 }

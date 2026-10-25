@@ -22,6 +22,29 @@ namespace TodoApiGrokBot.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("TodoApiGrokBot.Models.LoginEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("LoginEvents");
+                });
+
             modelBuilder.Entity("TodoApiGrokBot.Models.TodoItem", b =>
                 {
                     b.Property<int>("Id")
@@ -29,6 +52,9 @@ namespace TodoApiGrokBot.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -78,6 +104,17 @@ namespace TodoApiGrokBot.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("TodoApiGrokBot.Models.LoginEvent", b =>
+                {
+                    b.HasOne("TodoApiGrokBot.Models.User", "User")
+                        .WithMany("LoginEvents")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("TodoApiGrokBot.Models.TodoItem", b =>
                 {
                     b.HasOne("TodoApiGrokBot.Models.User", "User")
@@ -91,6 +128,8 @@ namespace TodoApiGrokBot.Migrations
 
             modelBuilder.Entity("TodoApiGrokBot.Models.User", b =>
                 {
+                    b.Navigation("LoginEvents");
+
                     b.Navigation("Todos");
                 });
 #pragma warning restore 612, 618

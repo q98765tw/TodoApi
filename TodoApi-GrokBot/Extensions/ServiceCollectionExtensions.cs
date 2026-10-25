@@ -18,10 +18,12 @@ public static class ServiceCollectionExtensions
     {
         services.AddDbContext<AppDbContext>(opt =>
             opt.UseNpgsql(config.GetConnectionString("DefaultConnection")));
+        services.AddSingleton(TimeProvider.System);
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITodoService, TodoService>();
+        services.AddScoped<IStatsService, StatsService>();
         return services;
     }
 
