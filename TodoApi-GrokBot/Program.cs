@@ -17,9 +17,12 @@ builder.Services
 
 var app = builder.Build();
 
-// 啟動時自動套用 migration
-using (var scope = app.Services.CreateScope())
+// 啟動時自動套用 migration（整合測試用 "Testing" 環境，由測試自行建立 SQLite schema）
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+}
 
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -29,3 +32,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
+// 讓測試專案的 WebApplicationFactory<Program> 可以參考
+public partial class Program { }

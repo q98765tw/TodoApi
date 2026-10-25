@@ -221,3 +221,15 @@ git push origin master
 - `POST /api/auth/login` same body → 200 `{ token, expiresAt }` (HS256, valid 7 days); 401 on wrong credentials.
 - All `/api/todos` endpoints require `Authorization: Bearer <token>` and only see the caller's own todos (other users' todos return 404). In Swagger, click **Authorize** and paste the token.
 - Note: the `AddUsersAndTodoOwnership` migration deletes all existing todos (they have no owner).
+
+## 執行測試
+
+測試專案 `TodoApi-GrokBot.Tests`（xUnit）包含單元測試與整合測試（`WebApplicationFactory<Program>`）。
+整合測試以 `Testing` 環境啟動 API，資料庫改用 SQLite in-memory、JWT 使用測試專用假金鑰，
+不會連線到 Neon 或使用任何真實秘密，因此不需要任何環境變數。
+
+```bash
+dotnet test
+```
+
+Docker 映像只會建置 `TodoApi-GrokBot.csproj`，且 `.dockerignore` 已排除測試專案，不影響 Render 部署。
