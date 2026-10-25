@@ -6,15 +6,14 @@ namespace TodoApiGrokBot.Services;
 
 public class StatsService(AppDbContext db, TimeProvider clock) : IStatsService
 {
-    // 台北固定 UTC+8（不依賴容器內 tzdata）
-    private static readonly TimeSpan Offset = TimeSpan.FromHours(8);
+    private static readonly TimeSpan Offset = TaipeiTime.Offset;
 
-    private DateTime TaipeiNow => clock.GetUtcNow().UtcDateTime + Offset;
+    private DateTime TaipeiNow => TaipeiTime.Now(clock);
 
     public async Task<List<DailyCount>> GetCompletionsAsync(int userId, int days = 30)
     {
         var firstDay = TaipeiNow.Date.AddDays(-(days - 1));
-        var fromUtc = DateTime.SpecifyKind(firstDay - Offset, DateTimeKind.Utc);
+        var fromUtc = TaipeiTime.ToUtc(firstDay);
 
         var completed = await db.Todos
             .Where(t => t.UserId == userId && t.CompletedAt != null && t.CompletedAt >= fromUtc)
@@ -32,7 +31,7 @@ public class StatsService(AppDbContext db, TimeProvider clock) : IStatsService
     {
         var now = TaipeiNow;
         var firstMonth = new DateTime(now.Year, now.Month, 1).AddMonths(-(months - 1));
-        var fromUtc = DateTime.SpecifyKind(firstMonth - Offset, DateTimeKind.Utc);
+        var fromUtc = TaipeiTime.ToUtc(firstMonth);
 
         // 只取 (UserId, 台北年月) 不重複組合，不回傳任何使用者資料
         var pairs = await db.LoginEvents

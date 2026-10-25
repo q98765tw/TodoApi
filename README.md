@@ -71,14 +71,15 @@ TodoApi-GrokBot/
 
 | 方法 | 路徑 | 說明 |
 |------|------|------|
-| GET | `/api/todos` | 取得全部 Todo |
+| GET | `/api/todos?status=all\|active\|completed\|overdue` | 取得 Todo（預設 all；無效值回 400）。overdue = 未完成且截止日早於台北今天（今天到期不算） |
 | GET | `/api/todos/{id}` | 取得單筆 Todo |
-| POST | `/api/todos` | 新增 Todo，Body：`{ "title": "買牛奶" }` |
-| PUT | `/api/todos/{id}` | 修改 Todo，Body：`{ "title": "買牛奶", "isDone": true }` |
+| POST | `/api/todos` | 新增 Todo，Body：`{ "title": "買牛奶", "dueDate": "2026-11-01" }`（dueDate 可省略） |
+| PUT | `/api/todos/{id}` | 修改 Todo，Body：`{ "title": "買牛奶", "isDone": true, "dueDate": null }`（dueDate 省略或 null 會清除期限） |
 | DELETE | `/api/todos/{id}` | 刪除 Todo |
 | GET | `/api/stats/completions` | 🔒 近 30 天（含今天）每日完成數 `[{ date: "yyyy-MM-dd", count }]`，補零 |
 | GET | `/api/stats/monthly-active-users` | 公開：近 12 個月每月不重複登入人數 `[{ month: "yyyy-MM", activeUsers }]`，補零 |
 
+> Todo 回應含 `dueDate`（`yyyy-MM-dd` 或 null）與計算欄位 `isOverdue`。
 > 統計以台北時間（固定 UTC+8）切日／切月。完成時間 `completedAt` 在 Todo 由未完成變完成時記錄、改回未完成時清除；每次成功登入記一筆 `LoginEvents`。
 
 ---

@@ -15,6 +15,11 @@
     #err { color: #c00; min-height: 1.2em; }
     #who { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     #who button { margin-left: auto; }
+    li button { margin-left: 0; }
+    li input.due { margin-left: auto; }
+    .overdue span, .overdue input.due { color: #c00; font-weight: bold; }
+    #filters { display: flex; gap: 4px; margin: 8px 0; }
+    #filters button.active { font-weight: bold; text-decoration: underline; }
     .chart { margin: 16px 0; }
     .hidden { display: none !important; }
   </style>
@@ -41,7 +46,13 @@
 
   <div id="todoView" class="hidden">
     <div id="who"><span>已登入：<b id="whoEmail"></b></span><button id="logoutBtn">登出</button></div>
-    <form id="f"><input type="text" id="t" placeholder="要做什麼？" required><button>新增</button></form>
+    <form id="f"><input type="text" id="t" placeholder="要做什麼？" required><input type="date" id="d" title="截止日（可不填）"><button>新增</button></form>
+    <div id="filters">
+      <button data-status="all" class="active">全部</button>
+      <button data-status="active">未完成</button>
+      <button data-status="completed">已完成</button>
+      <button data-status="overdue">逾期</button>
+    </div>
     <ul id="list"></ul>
     <div class="chart"><h3>近 30 天完成數</h3><canvas id="completionsChart"></canvas></div>
   </div>
@@ -108,28 +119,43 @@ async function authFetch(url, opts = {}) {
   return res;
 }
 
+let statusFilter = 'all';
+
 async function load() {
-  const todos = await (await authFetch(api)).json();
+  const todos = await (await authFetch(`${api}?status=${statusFilter}`)).json();
   list.innerHTML = '';
   todos.forEach(x => {
     const li = document.createElement('li');
     if (x.isDone) li.className = 'done';
-    li.innerHTML = `<input type="checkbox" ${x.isDone ? 'checked' : ''}><span></span><button>刪除</button>`;
+    if (x.isOverdue) li.classList.add('overdue');
+    li.innerHTML = `<input type="checkbox" ${x.isDone ? 'checked' : ''}><span></span>` +
+      `<input type="date" class="due" title="截止日"><button>刪除</button>`;
     li.querySelector('span').textContent = x.title;
-    li.querySelector('input').onchange = async e => {
-      await authFetch(`${api}/${x.id}`, { method: 'PUT', body: JSON.stringify({ title: x.title, isDone: e.target.checked }) });
+    const due = li.querySelector('input.due');
+    due.value = x.dueDate || '';
+    const save = body => authFetch(`${api}/${x.id}`, { method: 'PUT',
+      body: JSON.stringify({ title: x.title, isDone: x.isDone, dueDate: x.dueDate || null, ...body }) });
+    li.querySelector('input[type=checkbox]').onchange = async e => {
+      await save({ isDone: e.target.checked });
       load(); loadCompletions();
     };
+    due.onchange = async () => { await save({ dueDate: due.value || null }); load(); };
     li.querySelector('button').onclick = async () => { await authFetch(`${api}/${x.id}`, { method: 'DELETE' }); load(); loadCompletions(); };
     list.appendChild(li);
   });
 }
 
+document.querySelectorAll('#filters button').forEach(b => b.onclick = () => {
+  statusFilter = b.dataset.status;
+  document.querySelectorAll('#filters button').forEach(x => x.classList.toggle('active', x === b));
+  load();
+});
+
 f.onsubmit = async e => {
   e.preventDefault();
   showErr();
-  await authFetch(api, { method: 'POST', body: JSON.stringify({ title: t.value, isDone: false }) });
-  t.value = ''; load();
+  await authFetch(api, { method: 'POST', body: JSON.stringify({ title: t.value, isDone: false, dueDate: d.value || null }) });
+  t.value = ''; d.value = ''; load();
 };
 
 async function login(email, password) {

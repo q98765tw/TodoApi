@@ -59,6 +59,9 @@ namespace TodoApiGrokBot.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
+
                     b.Property<bool>("IsDone")
                         .HasColumnType("boolean");
 

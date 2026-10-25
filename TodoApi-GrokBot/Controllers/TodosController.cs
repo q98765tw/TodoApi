@@ -13,7 +13,12 @@ namespace TodoApiGrokBot.Controllers;
 public class TodosController(ITodoService todos) : ControllerBase
 {
     [HttpGet]
-    public async Task<IEnumerable<TodoItem>> GetAll() => await todos.GetAllAsync(User.GetUserId());
+    public async Task<ActionResult<IEnumerable<TodoItem>>> GetAll([FromQuery] string? status = null)
+    {
+        if (!TodoStatusFilterParser.TryParse(status, out var filter))
+            return BadRequest(new { error = "Invalid status. Use all, active, completed or overdue." });
+        return await todos.GetAllAsync(User.GetUserId(), filter);
+    }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<TodoItem>> Get(int id) =>
