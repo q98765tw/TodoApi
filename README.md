@@ -199,6 +199,7 @@ git push origin master
 
 - `appsettings.json` 裡的連線字串保持空白，真正的值只放在本機 User Secrets 與 Render 環境變數。
 - 若密碼曾外流（例如貼到聊天或公開地方），請到 Neon → **Roles** 重設密碼，並同步更新 Render 與 User Secrets。
+- AI Bot 存取 GitHub 採**最小權限**：使用 Fine-grained personal access token，只授權 `TodoApi-GrokBot` 這一個 repo、只開 **Contents 讀寫**，並設定 90 天到期；不使用整個帳號的 OAuth 授權。金鑰只存在 Bot 電腦的安全環境變數，不寫進 repo 或聊天，到期前重新產生，可隨時在 GitHub 撤銷。
 
 ## ⏱️ Render 免費層注意事項
 
