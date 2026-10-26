@@ -93,7 +93,7 @@ async function drawBar(id, labels, data, label, fallback) {
   charts[id] = new Chart(document.getElementById(id), {
     type: 'bar',
     data: { labels, datasets: [{ label, data }] },
-    options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display: false } } }
+    options: { scales: { x: { ticks: { autoSkip: false, maxRotation: 90, minRotation: 0, font: { size: 10 } } }, y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display: false } } }
   });
 }
 
